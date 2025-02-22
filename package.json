@@ -1,0 +1,15 @@
+{
+  "name": "bundns",
+  "module": "index.js",
+  "dependencies": {
+    "dns-packet": "^5.6.1",
+    "lru-cache": "^11.0.2"
+  },
+  "scripts": {
+    "start": "bun run src/index.js",
+    "test": "clear && bun test src/resolver.test.js",
+    "bench": "bun run src/resolver.bench.js",
+    "dev": "bun run --watch src/index.js"
+  },
+  "type": "module"
+}

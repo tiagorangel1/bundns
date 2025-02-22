@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>BunDNS</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700');
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        body {
+            margin: 5em auto;
+            max-width: 550px;
+            background-color: #121212;
+            color: white;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 40px;
+            margin-top: 0px;
+            font-weight: 600;
+            margin-bottom: 0px;
+            font-weight: 500;
+        }
+
+        input#input {
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 0px;
+            padding: 10px 20px;
+            background-color: rgba(255, 255, 255, 0.1);
+            margin-top: 30px;
+            font-size: 17px;
+            color: white;
+        }
+
+        p#result {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        p.record {
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            background-color: rgba(255, 255, 255, 0.01);
+            border-radius: 12px;
+            padding: 12px;
+            margin: 0px;
+            overflow-wrap: anywhere;
+        }
+
+        p.record .title {
+            font-weight: 500;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        p.record .contents {
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .record span.ttl {
+            display: block;
+            font-size: 12px;
+            margin-top: 8px;
+            opacity: 0.8;
+        }
+
+        #amount {
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>bundns</h1>
+
+    <p>To enable, set <code>https://dns.tiagorangel.com/query</code> as your DoH DNS provider in your browser.</p>
+
+    <input value="example.com" id="input" type="text" placeholder="example.com" />
+    <p id="amount">
+        0 entries found.
+    </p>
+    <p id="result"></p>
+
+    <script>
+        const debounce = (fn, delay) => {
+            let timer;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn(...args), delay);
+            };
+        };
+
+        let currentController = null;
+
+        async function getRecords(domain) {
+            if (currentController) {
+                currentController.abort();
+            }
+
+            if (!domain || !domain.includes(".")) {
+                document.getElementById("result").innerHTML = "";
+                document.getElementById("amount").innerHTML = "0 entries found";
+                return;
+            }
+
+            currentController = new AbortController();
+            const signal = currentController.signal;
+
+            const types = "A,NS,MD,MF,CNAME,SOA,MB,MG,MR,NULL,WKS,PTR,HINFO,MINFO,MX,TXT,RP,AFSDB,X25,ISDN,RT,NSAP,NSAP_PTR,SIG,KEY,PX,GPOS,AAAA,LOC,NXT,EID,NIMLOC,SRV,ATMA,NAPTR,KX,CERT,A6,DNAME,SINK,OPT,APL,DS,SSHFP,IPSECKEY,RRSIG,DNSKEY,DHCID,NSEC3PARAM,TLSA,SMIMEA,HIP,NINFO,RKEY,TALINK,CDS,CDNSKEY,OPENPGPKEY,CSYNC,ZONEMD,SVCB,HTTPS,SPF,UINFO,UID,GID,UNSPEC,NID,L32,L64,LP,EUI48,EUI64,TKEY,TSIG,MAILB,MAILA,ANY,URI,CAA,AVC,DOA,AMTRELAY,TA,DLV".split(",");
+            let output = "";
+            let amount = 0;
+
+            try {
+                const promises = types.map(type =>
+                    fetch(`/query?name=${domain}&type=${type}`, { signal })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.Answer) {
+                                amount += data.Answer.length;
+                                return data.Answer.map(record =>
+                                    `<p class="record record-${type.toLowerCase()}"><span class="title">${type} (${record.name})</span><span class="contents">${record.data}</span><span class="ttl">TTL: ${record.TTL}</span></p>`).join('');
+                            }
+                            return '';
+                        })
+                        .catch(error => {
+                            if (error.name === 'AbortError') {
+                                return '';
+                            }
+                            console.error(`Error fetching ${type} records:`, error);
+                            return '';
+                        })
+                );
+
+                const results = await Promise.all(promises);
+                output = results.join('');
+
+                if (!signal.aborted) {
+                    document.getElementById("result").innerHTML = output;
+                    document.getElementById("amount").innerHTML = `${amount} entries found`;
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('Error:', error);
+                }
+            }
+        }
+
+        const debouncedGetRecords = debounce(getRecords, 200);
+
+        document.querySelector("#input").addEventListener("input", function () {
+            debouncedGetRecords(this.value);
+        });
+
+        getRecords("example.com");
+    </script>
+
+</body>
+
+</html>

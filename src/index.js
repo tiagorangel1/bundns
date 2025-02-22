@@ -50,7 +50,7 @@ Bun.serve({
                     const type = question.type;
                     const typeNum = DNS_TYPES[type];
 
-                    console.log(`${domain} ${type}`); // check discord dms
+                    console.log(`${domain} ${type}`);
 
                     if (intercept[domain] && intercept[domain][type]) {
                         return new Response(dnsPacket.encode({

@@ -1,5 +1,5 @@
 # bundns
-
+Simple DNS forwarding server using Bun.
 
 
 To install dependencies:

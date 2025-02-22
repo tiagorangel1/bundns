@@ -1,5 +1,6 @@
 import dnsPacket from 'dns-packet';
 import { resolveDNS, DNS_TYPES } from './resolver.js';
+import intercept from './intercept.js';
 
 const PORT = 5353;
 
@@ -48,6 +49,21 @@ Bun.serve({
                     const domain = question.name;
                     const type = question.type;
                     const typeNum = DNS_TYPES[type];
+
+                    console.log(`${domain} ${type}`); // check discord dms
+
+                    if (intercept[domain] && intercept[domain][type]) {
+                        return new Response(dnsPacket.encode({
+                            id: parsed.id,
+                            type: 'response',
+                            flags: 0,
+                            questions: parsed.questions,
+                            answers: intercept[domain][type]
+                        }), {
+                            status: 200,
+                            headers: { "Content-Type": "application/dns-message" }
+                        });
+                    }
 
                     if (typeNum === undefined) {
                         return new Response(dnsPacket.encode({
